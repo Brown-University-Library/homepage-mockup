@@ -172,6 +172,10 @@ ul {
   float: right;
 }
 
+.underbanner {
+  margin-top: 30px !important;
+}
+
 /* footer styles from main library web site */
 #footer {
     clear: both;
