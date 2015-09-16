@@ -20,6 +20,7 @@ ul {
 #libnav { 
     margin-left : 10px ; 
     margin-bottom : 4px ; 
+    text-align : center ; 
 } 
 
 /* styling the top nav bar of main links */
@@ -50,6 +51,19 @@ ul {
 
 .overlay-container {
   position: relative;
+  min-height : 150px ; 
+}
+
+.overlay-container a {
+    color : rgb(255,228,182) ;
+    border-bottom : 1px dotted rgba(255,228,182) ; 
+    border-bottom : 1px dotted rgba(255,228,182,.3) ; 
+}
+
+.overlay-container a:hover {
+    color : rgb(255,162,0) ;
+    border-bottom : 1px dotted rgb(255,162,0) ; 
+    border-bottom : 1px dotted rgba(255,162,0,.5) ; 
 }
 
 .overlay-container .overlay {
@@ -97,30 +111,44 @@ ul {
 }
 
 .bannercaption {
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.8);
   color: #fff;
-  width: 20%;
-  transform: translate(-5%, -20%);
+  width: 200px ;
   position: absolute;
-  top: 80%;
-  right: 5%;
-  padding: 10px;
-  overflow: auto;
+  top: 0;
+  right: 0;
+  padding: 20px;
+  overflow: none;
+  height : 100% ; 
 }
 
 .bannercaption p {
   color: white;
-  font-size: .8em;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 1rem;
+  font-weight : 200 ; 
+  line-height : 1.9 ; 
+}
+
+
+@media only screen and (max-width: 1240px) {
+  .bannercaption p {
+    font-size: 1.3vw;
+  }
 }
 
 @media only screen and (max-width: 900px) {
   .bannercaption {
+  
+  display : none ; 
+/* 
   top: 85%;
   right: 0%;
   transform: translate(0%, 0%);
   padding: 10px;
   overflow: auto;
   width: 100%;
+ */
   }
 
   .bannercaption p {
@@ -131,6 +159,7 @@ ul {
     width: 100%;
   }
 }
+
 /* alert bar */
 .alertbar {
   width : 100% ; 
@@ -154,18 +183,39 @@ ul {
 /* events bar */
 .eventsbar {
   width : 100% ; 
-  background-color : #2b0b07 ; 
-  height : 22px ; 
-  min-height : 22px ; 
   clear : all ; 
   position : relative ; 
+  background-color : rgb(255,228,182) ; 
+/* 
+  background-color : #2b0b07 ; 
   float : left;
+  height : 25px ; 
+  min-height : 25px ; 
+  max-height : 25px ; 
+ */
 }
 
 .eventsbar p {
   text-align : center ; 
   font-size : 10pt ;
-  color: #fff;
+  color: #000;
+  font-family: 'Work Sans', sans-serif;
+  font-weight : 300 ; 
+  letter-spacing: 0px;
+  padding : 5px 10px 5px 10px ; 
+}
+
+.eventsbar p a {
+    color : rgb(125,52,0) ;
+    border-bottom : 1px dotted rgb(125,52,0) ; 
+    border-bottom : 1px dotted rgba(125,52,0,.2) ; 
+    font-weight : 300 ; 
+}
+
+eventsbar p a:hover {
+    color : rgb(255,255,255) ;
+    border-bottom : 1px dotted rgba(255,228,182) ; 
+    border-bottom : 1px dotted rgba(255,228,182,.2) ; 
 }
 
 .eventsmore {
@@ -173,7 +223,13 @@ ul {
 }
 
 .underbanner {
-  margin-top: 30px !important;
+  margin-top: 20px !important;
+}
+
+
+footer .row {
+    background-color : rgb(255,228,182) ;
+    padding-top : 10px ; 
 }
 
 /* footer styles from main library web site */
