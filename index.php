@@ -1,400 +1,431 @@
+<!DOCTYPE html>
 <?php 
+// FIXME Fix Typekit font flash
 
-// set string variables
-$upcoming_events = "" ;
-$categories = "" ;
 
 // URI of the events feed, get 90 days worth of events
 $url = "http://events.brown.edu/webcache/v1.0/rssDays/90/list-rss/%28catuid%3D%2700149399-257a645c-0125-94544dff-00002b0e%27%29.rss" ;
-// http://events.brown.edu/webcache/v1.0/rssDays/90/list-rss/%28catuid%3D%2700149399-257a645c-0125-94544dff-00002b0e%27%29.rss
-// http://events.brown.edu/webcache/v1.0/rssDays/90/list-rss/no--filter.rss
 
-// load the text of the feed into a variable and turn it into a simpleXML object
-$xml = simplexml_load_file($url) ;
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_TIMEOUT, 2); 
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); 
+$feed = curl_exec($ch);
+curl_close($ch);
 
-// iterate through the items in the object, pulling out relevant information
-for($i = 0; $i < 10; $i++){
-	$title = $xml->channel->item[$i]->title ;
-	$link = $xml->channel->item[$i]->link ;
-	$pubDate = rtrim($xml->channel->item[$i]->pubDate, "\ UT") ;
-	$categories = $xml->channel->item[$i]->category ; 
+if ($feed !='') {
+	// load the text of the feed into a variable and turn it into a simpleXML object
+	$xml = simplexml_load_string($feed) ;
 
-    // convert the pubDate string to a timestamp
-    $event_unix_timestamp_utc = strtotime( $pubDate ) ;
+	// iterate through the items in the object, pulling out relevant information
+	for($i = 0; $i < 10; $i++){
+		$title = $xml->channel->item[$i]->title ;
+		$link = $xml->channel->item[$i]->link ;
+		$pubDate = rtrim($xml->channel->item[$i]->pubDate, "\ UT") ;
+		$categories = $xml->channel->item[$i]->category ; 
 
-    // set the timezone of the timestamp to UTC, to be sure
-    $original_timestamp = date( 'Y-m-d H:i:s', $event_unix_timestamp_utc ) ;
-    $utc = new DateTimeZone('UTC') ;
-    $datetime = new DateTime($original_timestamp, $utc) ;
+		// convert the pubDate string to a timestamp
+		$event_unix_timestamp_utc = strtotime( $pubDate ) ;
 
-    // identify a new timezone as New York
-    $target_timezone = new DateTimeZone('America/New_York') ;
-    
-    // set the new timezone on the timestamp 
-    $datetime->setTimeZone($target_timezone) ;
-    
-    // make the timestamp pretty again
-    $display_date = $datetime->format('F j \a\t g:ia') ;
-    $event_unix_timestamp_eastern = $datetime->format('U') ;
-    	
-	// read each of the categories in the item 
-	foreach ($xml->channel->item[$i]->category as $category) {
-            $categories .= "<br />A category is " . $category ;
-    }
+		// set the timezone of the timestamp to UTC, to be sure
+		$original_timestamp = date( 'Y-m-d H:i:s', $event_unix_timestamp_utc ) ;
+		$utc = new DateTimeZone('UTC') ;
+		$datetime = new DateTime($original_timestamp, $utc) ;
 
-    // We don't want "Ongoing" events, and we don't want events that have happened in the past. If none of the categories is "Ongoing", and if the event is in the future, add it to the display
-    // Future improvements : make the event remain up for a half hour after it begins
-    if (strpos($categories,'Ongoing') === false && $event_unix_timestamp_eastern > time() && $count < 3) 
-    {
-        $upcoming_events .= "$display_date:&nbsp;<a href='$link'>$title</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;";
-        ++$count ;
-    }
-    
+		// identify a new timezone as New York
+		$target_timezone = new DateTimeZone('America/New_York') ;
+	
+		// set the new timezone on the timestamp 
+		$datetime->setTimeZone($target_timezone) ;
+	
+		// make the timestamp pretty again
+		$display_date = $datetime->format('F j \a\t g:ia') ;
+		$event_unix_timestamp_eastern = $datetime->format('U') ;
+		
+		// read each of the categories in the item 
+		foreach ($xml->channel->item[$i]->category as $category) {
+				$categories .= "<br />A category is " . $category ;
+		}
+
+		// We don't want "Ongoing" events, and we don't want events that have happened in the past. If none of the categories is "Ongoing", and if the event is in the future, add it to the display
+		// FIXME Future improvements : make the event remain up for a half hour after it begins
+		if (strpos($categories,'Ongoing') === false && $event_unix_timestamp_eastern > time() && $count < 3) 
+		{
+			$upcoming_events .= "$display_date:&nbsp;<a href='$link'>$title</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;";
+			++$count ;
+		}   
+	}
+
+	// take the final pipe and spaces off the end of the events list
+	$upcoming_events = rtrim($upcoming_events, "&nbsp;&nbsp;&bull;&nbsp;&nbsp;") ;
+
+	// add a link to the full library calendar
+	$upcoming_events .= "&nbsp;&nbsp;&bull; &nbsp;&nbsp;<a href=\"http://brown.libcal.com/\" id=\"see_all_events\">see&nbsp;all&nbsp;events&nbsp;&raquo;</a> <span style=\"font-size : .8em ; \">|</span></a> <a href=\"http://library.brown.edu/exhibits/\" id=\"see_all_exhibits\">see current exhibits&nbsp;&raquo;</a>" ;
 }
 
-// take the final pipe and spaces off the end of the events list
-$upcoming_events = rtrim($upcoming_events, "&nbsp;&nbsp;&bull;&nbsp;&nbsp;") ;
 
-// add a link to the full library calendar
-$upcoming_events .= "&nbsp;&nbsp;&bull; &nbsp;&nbsp;<a href=\"http://brown.libcal.com/\">see&nbsp;all&nbsp;events-></a>" ;
+/* end calendar event retrieval /*
 
+/* begin librarian head-shot retrieval*/
+require ('/var/www/common/guest_homepage_connect.php');
+
+// Create connection
+$conn = mysqli_connect($servername, $username, $password, $dbname);
+// Check connection
+// if (!$conn) {
+//     die("Connection failed: " . mysqli_connect_error());
+// }
+// keep the die commented out except for error checking -- if the db dies, the home page dies
+
+$sql = "SELECT selector, portrait, staffid, firstname, lastname
+	FROM library.staff WHERE selector='Y' and portrait NOT LIKE '' and active='y' ORDER BY RAND() LIMIT 3";
+
+    $result = mysqli_query($conn, $sql);
+
+    while($row = mysqli_fetch_assoc($result)) {
+        $selector_display_block .= "<a href='http://library.brown.edu/sr/profile.php?id=" . $row["staffid"] . "'><img src='/gateway/portraits/" . $row["portrait"] . "' alt='" . $row["firstname"] . " " . $row["lastname"] . "' /></a>";
+    }
 ?>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Brown University Library</title>
+	<link rel="stylesheet" type="text/css" href="/common/css/bootstrap/bootstrap.min.css" />
+	<link rel="stylesheet" type="text/css" href="/common/css/bootstrap/style.css" />
+	<link rel="stylesheet" type="text/css" href="/common/css/icomoon.css" />
+	<script>
+	  (function(d) {
+	    var config = {
+	      kitId: 'ojl0emw',
+	      scriptTimeout: 3000,
+	      async: true
+	    },
+	    h=d.documentElement,t=setTimeout(function(){h.className=h.className.replace(/\bwf-loading\b/g,"")+" wf-inactive";},config.scriptTimeout),tk=d.createElement("script"),f=false,s=d.getElementsByTagName("script")[0],a;h.className+=" wf-loading";tk.src='https://use.typekit.net/'+config.kitId+'.js';tk.async=true;tk.onload=tk.onreadystatechange=function(){a=this.readyState;if(f||a&&a!="complete"&&a!="loaded")return;f=true;clearTimeout(t);try{Typekit.load(config)}catch(e){}};s.parentNode.insertBefore(tk,s)
+	  })(document);
+	</script>
 
-<html><head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Library Home Page</title>
-
-<link rel="stylesheet" type="text/css" href="css/style.css" media="screen" />
-<link rel="stylesheet" href="css/foundation.css" />
-<link href='https://fonts.googleapis.com/css?family=Work+Sans:400,100,200,300' rel='stylesheet' type='text/css' />
-
+	<style type="text/css">
+		@media (max-width:775px) {
+		    #main_search_box {
+		        background-position: left -200px top 0;
+		    }   
+		}
+		
+		::-webkit-input-placeholder {
+		   color: #000 ;
+		}
+		
+		::-moz-placeholder {
+		   color: #000;  
+		}
+		
+		:-ms-input-placeholder {  
+		   color: #000;  
+		}
+		
+		@media print {
+		    a[href]:after { 
+		        content: none ; 
+		    }
+		        
+		    #main_search_box { 
+		        display : none ; 
+		    }
+		}
+		
+	</style>
+	<script type="text/javascript">
+	setTimeout(function(){var a=document.createElement("script");
+	var b=document.getElementsByTagName("script")[0];
+	a.src=document.location.protocol+"//script.crazyegg.com/pages/scripts/0027/2813.js?"+Math.floor(new Date().getTime()/3600000);
+	a.async=true;a.type="text/javascript";b.parentNode.insertBefore(a,b)}, 1);
+	</script>
 </head>
-<body id="type-c">
-
-
-<div id="wrap">    
-<div style="width: 100%;" id="libnav">
-	    <a href="http://library.brown.edu/borrowing/">Borrow&nbsp;&amp;&nbsp;Renew</a> 
-	    <a href="http://library.brown.edu/eresources/">Articles,&nbsp;Journals,&nbsp;&amp;&nbsp;Databases</a> 
-	    <a href="http://library.brown.edu/about/specialists.php">Research&nbsp;Help</a> 
-	    <a href="http://library.brown.edu/libweb/hours.php">Hours,&nbsp;Locations,&nbsp;&amp; Events</a> 
-	    <a href="http://library.brown.edu/libweb/askalib.php">Ask&nbsp;a&nbsp;Question&nbsp;Now</a> 
-	    <a href="http://library.brown.edu/libweb/proxy.php">Off‐Campus&nbsp;Access</a> 
-	    <a href="https://josiah.brown.edu/patroninfo">MyJosiah&nbsp;Account</a> 
-	</div>
-
-	<div id="title_bar">
-	    <a href="http://www.brown.edu/"><img src="images/header_shield.png" style="height: 67px; margin-left :10px; margin-right: 10px; float: left;" alt="Brown University Homepage" title="Brown University Homepage"></a> 		
-
-	    <a href="http://library.brown.edu/"><img style="height: 27px; margin-top: 22px;" src="images/Brown_University_Library_header_text.png" alt="Brown University Library"></a> 
-	</div>
+<body>
+<div class="screen_reader">
+	<h1>
+		Brown University Library
+	</h1>
+	<a href="#main_search_box">Skip to search box</a> <a href="#calendar_bar">Skip to events</a> <a href="#main_content">Skip to main content</a> 
 </div>
+<?php $universal_header = file_get_contents('https://library.brown.edu/includes/universal_header_include.html'); ?>
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-12" id="navbar_container">
+			<nav class="navbar navbar-default" role="navigation">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1"> <span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span> </button> 
+				</div>
+				<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+<?php echo $universal_header ; ?>
+				</div>
+			</nav>
+		</div>
+	</div>
+	<div class="row" id="banner_bar">
+		<div class="col-md-3 logo">
+			<a href="http://www.brown.edu/"><img alt="Brown University Library -- link to Brown Home Page" src="https://library.brown.edu/common/images/wordmark_for_dark_background.png" /></a> 
+		</div>
+		<div class="col-md-9 banner_text">
+			<div class="icon-clock icon">
+				<h2 style="position : relative ; top : -.15em ; ">
+					&nbsp;&nbsp;Today's Hours
+				</h2>
+			</div>
+			<br />
+<?php echo file_get_contents('https://library.brown.edu/includes/hours_homepage_2016.php') ; ?>
+			<a href="https://library.brown.edu/libweb/hours.php" id="hours_more">More hours and locations</a> 
+		</div>
+	</div>
+	<div class="row">
+	<!-- change "display none" to "display block" to make the emergency bar display-->
+		<div class="col-md-12" id="emergency_bar" style="display : none
+	 ; font-size : 1.3em ; padding : 10px ; ">
 
-<div id="content-wrap">
-  <div id="content">
+		</div>
+	</div>
+	<div class="row" id="main_search_box_and_description">
 
+<!-- Change URL below for new image -->
+<!-- IMPORTANT: check image at phone resolution to see if the offset needs changing. The offset is in the style element in the header of this page -->
+
+			<div class="col-md-9" id="main_search_box" style="background-image : url('https://library.brown.edu/redesign/images/banner/20170511citations2.jpg') ; " title="Need help with citations?">
+	<!-- Change value of "top" value in the div below to look good over picture, but NO MORE THAN 80% -->
+				<div id="search_form" style="top : 80% ; left : 50% ; width : 40% ; border : 0px solid gold ; ">
+					<form method="get" action="https://search.library.brown.edu/" name="searchForm" id="searchForm" class="search">
+						<input name="utf8" type="hidden" value="&#x2713;"  />
+						<div id="searchForm_lookfor_container">
+							<label for="searchForm_lookfor" class="screen_reader">Search library resources</label>
+							<input id="searchForm_lookfor" type="text" name="q" placeholder="Search library resources" onfocus="if (value =='Search library resources'){value =''}" onblur="if (value ==''){value='Search library resources'}" style="background-color : #efefef ; height : 51px ; border : 4px solid #FFC72C ; " />
+							<button id="search_button"><span class="icon-search"></span><span class="screen_reader">Search</span></button> 
+						</div>
+					</form>
+				</div>
+			</div>
+			<div class="col-md-3" id="main_search_description"> 
+			
+	<!-- Change caption below to match image -->
+				
+			<h3 style="font-weight : bold ; text-align : center ; font-size : 1em ; ">
+			Citation Management Help
+			</h3>
+			Collecting citations for bibliographies can be a lot of work. See how <a href="http://libguides.brown.edu/citations">the Library can help make the process a whole lot easier</a>.
+			</div>	
+						
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-12" id="calendar_bar">
+			<p>
+				<span class="icon-calendar" aria-hidden="true"> </span> <strong>Upcoming Events: </strong> 
+<?php echo $upcoming_events ; ?>
+			</p>
+		</div>
+	</div>
+	<div class="row" id="main_content">
+		<div class="col-md-3" id="get_help">
+			<div class="icon-bubbles4 icon">
+				<h2>
+					Get Help
+				</h2>
+			</div>
+			<div id="helppix">
+<?php echo $selector_display_block ; ?>
+				<p id="meet_libs">
+					<a href="http://library.brown.edu/about/specialists.php?sort=selector">Learn more about our librarians</a>
+				</p>
+				<p id="have_a_question">
+					Have a question about <strong>research</strong>, <strong>finding materials</strong>, or <strong>anything else</strong>?
+				</p>
+			</div>
+			<div>
+				<ul id="help_links">
+<!-- LibraryH3lp chat link. First li below shows up if someone is logged into chat and online. Second one shows up if no one is logged in and online. -->
+					<li class="libraryh3lp" style="display: none;"> <a href="#" onclick="window.open('https://us.libraryh3lp.com/chat/bulchat@chat.libraryh3lp.com?css=https://library.brown.edu/common/css/libraryh3lp_widget.css', 'chat', 'resizable=1,width=350,height=380'); return false;"> Ask a Librarian Now&nbsp;&nbsp;<span class="icon-bubble" id="chat_bubble_icon" title="Live chat is online"></span> </a> </li>
 <!--
-  <div class="alertbar">
-    <p>Alert: <a href="">PubMed will be down today until 4 p.m.</a></p>
-  </div>
+					<li class="libraryh3lp" style="display: none;"></li>
 -->
-
-<div class="row">
-
-
-<div class="overlay-container">
-    <img style="width:100%" src="images/dsl.png">
-
-    <div class="overlay">
-      <div class="searchbox">
-
-     <div class="row collapse">     
-      <div class="large-11 columns">
-        <input type="text" placeholder="search" style="border-width : 0px ; " />
-      </div>
-      <div class="large-1 end columns">
-        <button class="postfix" style="padding: 10px;"><i class="icon-search"></i></button></input>
-      </div>
-    </div>
-    <div class="advanced">
-        <a href="">Advanced Search</a>
-      </div>
-
-      </div> <!-- end .searchbox -->
-    </div>
-    
-    <div class="bannercaption">
-        <p>The <a href="http://library.brown.edu/dsl/">Digital Scholarship Lab</a> was designed for collaboration, flexibility, and ease of use for scholars working on data-rich and visually mediated research.</p>
-    </div>
-    
-</div> 
-           
+<!-- end LibraryH3lp chat link -->
+					<li><a href="http://library.brown.edu/libweb/askalib.php">Email, Text, or Phone a Librarian</a></li>
+					<li><a href="http://library.brown.edu/info/borrowing/">Learn about Borrowing</a></li>
+					<li><a href="http://libguides.brown.edu/">Find an Online Subject Guide</a></li>
+					<li><a href="http://library.brown.edu/workshops/">Explore and Register for Workshops</a></li>
+					<li><a href="http://library.brown.edu/about/specialists.php">Connect with a Subject Librarian</a></li>
+					<li><a href="http://library.brown.edu/cds/">Consult on a Digital Scholarly Project</a></li>
+					<li><a href="https://library.brown.edu/reserves/">Request Course Reserves <span style="font-size : .7em ; ">(<span style="font-variant : small-caps ; ">ocra</span>)</span></a></li>
+					<li><a href="http://libguides.brown.edu/diy">Get Started Using the Library</a> </li>
+				</ul>
+			</div>
+		</div>
+		<div class="col-md-9" id="non_help_container">
+			<div class="col-md-12" id="find_in_get">
+				<div class="col-md-5" id="find">
+					<div class="col-md-12 pad">
+						<div class="icon-search icon">
+							<h2>
+								Find Library Resources
+							</h2>
+						</div>
+						<div class="col-md-12 shell">
+							<div id="find_inner">
+								<div class="col-md-7">
+									<a href="https://search.library.brown.edu">Josiah&nbsp;<span style="font-size : .7em ; ">(Library catalog)</span></a><br />
+									<a href="http://josiah.brown.edu">Classic&nbsp;Josiah</a><br />
+									<a href="http://library.brown.edu/info/borrowing#other">Interlibrary Loan</a><br />
+									<a href="http://repository.library.brown.edu">Brown&nbsp;Digital Repository</a><br />
+								</div>
+								<div class="col-md-5">
+									<a href="http://rl3tp7zf5x.search.serialssolutions.com/">Journals</a><br />
+									<a href="http://rl3tp7zf5x.search.serialssolutions.com/?SS_Page=refiner&amp;SS_RefinerEditable=yes">Articles</a><br />
+									<a href="http://libguides.brown.edu/az.php">Databases</a><br />
+									<a href="http://www.worldcat.org.revproxy.brown.edu/">WorldCat</a> <span style="font-size : .7em ;">(<a href="https://login.revproxy.brown.edu/login?url=http://newfirstsearch.oclc.org/dbname=WorldCat;done=http://library.brown.edu/;FSIP">Advanced</a>)</span><br />
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-4" id="in">
+					<div class="col-md-12 pad">
+						<div class="icon-office icon">
+							<h2>
+								In the Libraries
+							</h2>
+						</div>
+						<div class="col-md-12 shell">
+							<div id="in_inner">
+								<div class="col-md-6">
+									<a href="http://library.brown.edu/libweb/hours.php">Places & Hours</a><br />
+									<a href="http://library.brown.edu/reserves/">Course Reserves</a><br />
+									<a href="http://library.brown.edu/info/computers_technology">Computers</a><br />
+									<a href="http://library.brown.edu/calendar/">Events</a><br />
+								</div>
+								<div class="col-md-6">
+									<a href="http://library.brown.edu/create/digitalstudio/">Digital Studio</a><br />
+									<a href="http://library.brown.edu/collatoz/">Collections</a><br />
+									<a href="http://library.brown.edu/about/stafflist.php">People</a><br />
+									<a href="http://library.brown.edu/info/coffee_snacks">Coffee &amp; Snacks</a><br />
+<!--<a href="" class="morelink">More&nbsp;&raquo;</a><br />-->
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3" id="get">
+					<div class="col-md-12 pad">
+						<div class="icon-accessibility icon">
+							<h2>
+								Get access
+							</h2>
+						</div>
+						<div class="col-md-12 shell">
+							<div class="col-md-12" id="get_inner">
+								<a href="http://library.brown.edu/libweb/proxy.php">Off-Campus Access</a><br />
+								<a href="http://library.brown.edu/hay/specol.php">Special Collections</a><br />
+								<a href="http://library.brown.edu/libweb/visitors.php">Info for Guests</a><br />
+								<a href="http://library.brown.edu/borrowing/borrowdirect.php">BorrowDirect</a> 
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-12" id="cluster_news_pix">
+				<div class="col-md-5" id="cluster_pix">
+					<div class="col-md-12" id="cluster">
+<!-- 
+						<div id="cluster_info">
+							<a href="http://library.brown.edu/services/clusters/lib_mobile/" class="icon-info"><span class="screen_reader">Computer availability for all Library spaces</span></a> 
+						</div>
+ -->
+						<div class="icon-display icon">
+							<h2>
+								Computer Availability
+							</h2>
+						</div>
+						<div id="cluster_availability">
+<?php include('/var/www/html/libweb/cluster_counts/key_server_counts.php'); ?>
+						</div>
+					</div>
+					<div class="col-md-12" id="pix">
+						<div class="col-md-12" id="pix_inner">
+						
+						
+						<!-- CENTER BOX CONTENT to be updated weekly -->
+							
+							<h3>
+							    <a href="http://library.brown.edu/eresources/nytimes.php">New York Times</a>
+							</h3>
+							<a href="http://library.brown.edu/eresources/nytimes.php"><img style="width : 40% ; " src="http://library.brown.edu/redesign/images/banner/20170329NYTlogo.jpg" alt="The New York Times" /></a>Did you know that Brown students, faculty, and staff are eligible for free access to the New York Times? <a href="http://library.brown.edu/eresources/nytimes.php">Learn how to activate your Academic Pass</a>.
+						</div>
+					</div>
+				</div>
+				<div class="col-md-7" id="news">
+					<div class="col-md-12" id="news_inner">
+						<div class="icon-quotes-left icon">
+							<h2>
+								<a href="https://blogs.brown.edu/libnews/" style="color : #333 ; ">News from the Libraries</a>
+							</h2>
+						</div>
+						<div id="news_content">
+<?php
+                                //adapted from http://bavotasan.com/2010/display-rss-feed-with-php/
+                                $rss = new DOMDocument();
+                                $rss->load('https://blogs.brown.edu/libnews/feed/');
+                                $feed = array();
+                                foreach ($rss->getElementsByTagName('item') as $node) {
+                                    $item = array ( 
+                                        'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
+                                        'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
+                                        'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
+                                        );
+                                    array_push($feed, $item);
+                                }
+                                $limit = 2;
+                                for($x=0;$x<$limit;$x++) {
+                                    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
+                                    $link = $feed[$x]['link'];
+                                    $description = $feed[$x]['desc'];
+                                    $new_description = preg_replace('/Continue reading <span class=\"meta-nav\">\&\#8594\;<\/span>/', 'more &raquo;<br /><br />', $description) ;
+                                    $date = date('l F d, Y', strtotime($feed[$x]['date']));
+                                    echo '<p><strong><a href="'.$link.'">'.$title.'</a></strong><br />';
+                                    echo '<p><!--img src="" style="float : right ; width : 70px ; height : 70px ; margin-left : 10px ; margin-bottom : 10px ; "/-->'.$new_description.'</p>';
+                                }
+                            ?>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+<?php include("/var/www/html/includes/universal_footer_include_bootstrap.html") ; ?>
 </div>
-
-
-  <div class="eventsbar">
-    <p><span class="icon-calendar"> </span><strong>Upcoming Events: </strong><?php echo $upcoming_events ; ?></p>
-  </div>
-
-<div class="row underbanner">
-<div class="large-9 columns">
-<div class="row">
-<div class="large-4 columns">
-<div class="panel">
-<h6>Electronic Resources</h6>
-<div class="row">
-  <div class="large-5 columns">
-    <span class="textbox">
-    <a>
-    Journals<br>
-    Databases<br>
-    Articles<br>
-    Josiah/Catalog<br>
-    </a>
-    </span>
-  </div>
-  <div class="large-5 columns">
-    <span class="textbox">
-    <a>
-    WorldCat<br>
-    Illiad<br>
-    myJosiah<br>
-    More-><br>
-    </a>
-    </span>
-  </div>
-  </div>
-</div>
-</div>
-<div class="large-4 columns">
-<div class="panel">
-<h6>Getting Access</h6>
-<div class="row">
-  <div class="large-12 columns">
-    <span class="textbox">
-    <a>
-    Borrow & Renew<br>
-    Off-Campus Logins<br>
-    Special Collections<br>
-    Information for Guests<br>
-    </a>
-    </span>
-  </div>
-  </div>
-</div>
-</div>
-<div class="large-4 columns">
-<div class="panel">
-<h6>In the Libraries</h6>
- <div class="row">
-  <div class="large-6 columns">
-    <span class="textbox">
-    <a>
-    Hours<br>
-    Spaces<br>
-    Computers<br>
-    Events<br>
-    </a>
-    </span>
-  </div>
-  <div class="large-6 columns">
-    <span class="textbox">
-    <a>
-    Collections<br>
-    People<br>
-    Coffee&c.<br>
-    More -><br>
-    </a>
-    </span>
-  </div>
-  </div>
-</div>
-</div>
-</div>
-
-<div class="row">
-<div class="large-6 columns">
-<div class="panel">
-<h4>News from The Libraries</h4>
-<div class="row">
-<div class="large-10 columns textbox">
-CBS News Report Features Two Brown Alumni, Malcolm X, and Materials from the Brown Archives
-</div>
-<div class="large-2 columns">
-<img src="http://placehold.it/100x100&text=Image">
-</div>
-</div>
-
-<div class="row">
-<div class="large-10 columns textbox">
-Event: Open Access in the Humanities: Benefits, Challenges and Economics with Martin Paul Eve
-</div>
-<div class="large-2 columns">
-<img src="http://placehold.it/100x100&text=Image">
-</div>
-</div>
-
-<div class="row">
-<div class="large-10 columns textbox">
-Exhibit: Art of the Book
-</div>
-<div class="large-2 columns">
-<img src="http://placehold.it/100x100&text=Image">
-</div>
-</div>
-
-<div class="row">
-<div class="large-10 columns textbox">
-Event and Exhibit: Unicorn Found: Science, Literature, and the Arts
-</div>
-<div class="large-2 columns">
-<img src="http://placehold.it/100x100&text=Image">
-</div>
-</div>
-<hr>
-
-<div class="row">
-<div class="large-12 columns textbox">
-<a href="">Subscribe to the Library Newsletter</a>
-</div>
-</div>
-</div>
-</div>
-
-<div class="large-6 columns">
-<div class="panel">
-<h4>Today's Hours</h4>
-<p class="textbox">Rockefeller Library: 8:30 a.m.-9:00 p.m. <br>
-Friedman Study Center: 8:30 a.m.-9:00 p.m.    </p>
-<a href="#" class="small button">more hours and locations -></a>
-</div>
-
-<div class="panel">
-<h4>Celebration Box</h4>
-</div>
-
-<div class="panel">
-<h4>Innovations</h4>
-<div class="row">
-<div class="large-4 columns textbox">
-Center for Digital Scholarship<br>
-Brown Digital Repository
-</div>
-<div class="large-4 columns textbox">
-Medical Connections<br>
-Digital Scholarship Lab
-</div>
-<div class="large-3 columns textbox">
-Digital Studio<br>
-Digital Studio
-</div>
-</div>
-</div>
-</div>
-
-
-
-
-</div>
-</div>
-<div class="large-3 panel columns">
-<h4>Get Help</h4>
-<div class="row">
-<div class="large-8 columns">
-<ul class="textbox">
-  <li>Ask a Librarian Now</li>
-  <li>Find a Subject Research Guide</li>
-  <li>Locate a Book or Article</li>
-  <li>Request Course Reserves</li>
-  <li>Attend a Workshop</li>
-  <li>Get Help with Citations</li>
-  <li>Request an Interlibrary Loan</li>
-  <li>Connect with a Personal Librarian</li>
-  <li>Get Started Using the Library</li>
-</ul>
-</div>
-<div class="large-4 columns">
-<img src="http://placehold.it/100x100&text=Image">
-<p class="gethelp">Bonnie Buzzel<br>
-Senior Knowledge Systems Librarian<br><br>
-<a href="">Meet More Librarians</a>
-</p>
-</div>
-
-</div>
-</div>
-</div>
- 
-<footer class="row">
-<div class="large-12 columns">
-<div class="row">
-<div class="large-8 columns">
-  <div class="row">
-  <div class="large-4 columns">
-  <h5>About the Library</h5>
-  <ul class="textbox">
-    <li><a href="">Overview and Leadership</a></li>
-    <li><a href="">Friends of the Library</a></li>
-    <li><a href="">Library Staff</a></li>
-    <li><a href="">Alumni / Giving</a></li>
-    <li><a href="">Policies</a></li>
-    <li><a href="">Blogs</a></li>
-    <li><a href="">Jobs</a></li>
-  </ul>
-  </div>
-  <div class="large-4 columns">
-  <h5>Resources for:</h5>
-  <ul class="textbox">
-    <li><a href="">Undergraduate Students</a></li>
-    <li><a href="">Graduate Students</a></li>
-    <li><a href="">Faculty</a></li>
-    <li><a href="">Alumni</a></li>
-    <li><a href="">Visiting Scholars</a></li>
-    <li><a href="">Researchers</a></li>
-    <li><a href="http://library.brown.edu/intranet">Library Staff</a></li>
-  </ul>
-  </div>
-  <div class="large-4 columns">
-  <h5>Materials by Type</h5>
-  <ul class="textbox">
-    <li><a href="">Newspapers</a></li>
-    <li><a href="">Video and Audio</a></li>
-    <li><a href="">Books and ebooks</a></li>
-    <li><a href="">Journals and Articles</a></li>
-    <li><a href="">Theses and Dissertations</a></li>
-    <li><a href="">Special Collections</a></li>
-    <li><a href="">Entertainment DVDs</a></li>
-    <li><a href="">Computers and Technology</a></li>
-  </ul>
-  </div>
-  </div>
-
-</div>
-
-<div class="large-4 columns">
-<ul class="right">
-<h6><a href="http://library.brown.edu/libweb/atoz.php">Library A-Z</a></h6>
-<li>Brown University Library<br>10 Prospect Street/Box A<br>Providence, RI 02912 USA</li>
-<li><a href="mailto:libweb@brown.edu">libweb@brown.edu</a></li>
-<li>401-863-2165</li>
-</ul>
-<ul class="inline-list right">
-<li><a href="http://library.brown.edu/gateway/lrg.php?id=67&task=home"><img src="http://library.brown.edu/images/fdlp_logo_32x29.gif"></a></li>
-<li><a href="http://library.brown.edu/socialwall/"><img src="http://library.brown.edu/img_2011/socialwall_footer_icon.png"></a></li>
-<li><a href="http://library.brown.edu/enewsletters/"><img src="http://library.brown.edu/img_2011/enewsletter_footer_icon.png"></a></li>
-<li><a href="http://library.brown.edu/about/public_feeds.php"><img src="http://library.brown.edu/img_2011/RSS_footer_icon.png"></a></li>
-<li><a href="http://mobul.boopsie.com/"><img src="http://library.brown.edu/img_2011/moBUL_icon.png"></a></li>
-</ul>
-</div>
-</div>
-</div>
-</footer>
-
-
-
-  </div> <!-- end #content -->
-</div> <!-- end #content-wrap -->
-
-
+<script src="/common/js/bootstrap/jquery.min.js">
+</script>
+<script src="/common/js/bootstrap/bootstrap.min.js">
+</script>
+<script src="/common/js/bootstrap/scripts.js">
+</script>
+<!--chat code-->
+<script type="text/javascript">
+	
+	     (function() {
+	       var x = document.createElement("script"); x.type = "text/javascript"; x.async = true;
+	       x.src = (document.location.protocol === "https:" ? "https://" : "http://") + "us.libraryh3lp.com/js/libraryh3lp.js?multi,poll";
+	       var y = document.getElementsByTagName("script")[0]; y.parentNode.insertBefore(x, y);
+	     })();
+</script>
+<!-- End chat widget -->
+<!-- Google analytics -->
+<script type="text/javascript">
+	var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+	document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+	try {
+	var pageTracker = _gat._getTracker("UA-3203647-3");
+	pageTracker._trackPageview();
+	} catch(err) {}
+</script>
 </body>
 </html>
