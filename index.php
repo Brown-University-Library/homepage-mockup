@@ -60,7 +60,7 @@ if ($feed !='') {
 	$upcoming_events = rtrim($upcoming_events, "&nbsp;&nbsp;&bull;&nbsp;&nbsp;") ;
 
 	// add a link to the full library calendar
-	$upcoming_events .= "&nbsp;&nbsp;&bull; &nbsp;&nbsp;<a href=\"http://brown.libcal.com/\" id=\"see_all_events\">see&nbsp;all&nbsp;events&nbsp;&raquo;</a> <span style=\"font-size : .8em ; \">|</span></a> <a href=\"http://library.brown.edu/exhibits/\" id=\"see_all_exhibits\">see current exhibits&nbsp;&raquo;</a>" ;
+	$upcoming_events .= "&nbsp;&nbsp;&bull; &nbsp;&nbsp;<a href=\"http://brown.libcal.com/\" id=\"see_all_events\">see&nbsp;all&nbsp;events&nbsp;&raquo;</a> <span style=\"font-size : .8em ; \">|</span> <a href=\"http://library.brown.edu/exhibits/\" id=\"see_all_exhibits\">see current exhibits&nbsp;&raquo;</a>" ;
 }
 
 
@@ -83,7 +83,12 @@ $sql = "SELECT selector, portrait, staffid, firstname, lastname
     $result = mysqli_query($conn, $sql);
 
     while($row = mysqli_fetch_assoc($result)) {
-        $selector_display_block .= "<a href='http://library.brown.edu/sr/profile.php?id=" . $row["staffid"] . "'><img src='/gateway/portraits/" . $row["portrait"] . "' alt='" . $row["firstname"] . " " . $row["lastname"] . "' /></a>";
+        $staffid = $row["staffid"] ;
+        $portrait = $row["portrait"] ;
+        $firstname = $row["firstname"] ;
+        $lastname = $row["lastname"] ;
+        
+        $selector_display_block .= "<a href='http://library.brown.edu/sr/profile.php?id=$staffid'><img src='/gateway/portraits/$portrait' alt=\"$firstname $lastname\" /></a>";
     }
 ?>
 <html lang="en">
@@ -399,7 +404,6 @@ $sql = "SELECT selector, portrait, staffid, firstname, lastname
 		</div>
 	</div>
 <?php include("/var/www/html/includes/universal_footer_include_bootstrap.html") ; ?>
-</div>
 <script src="/common/js/bootstrap/jquery.min.js">
 </script>
 <script src="/common/js/bootstrap/bootstrap.min.js">
