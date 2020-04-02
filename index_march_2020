@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<?php 
+// FIXME Fix Typekit font flash
+
+// // Define some variables 
+// $selector_display_block = "" ;
+// $upcoming_events = "" ;
+// 
+// 
+// 
+// // This is the number of events you want showing in the calendar bar. 
+// $number_of_events = 4 ;
+// 
+// // URI of the events feed, get the next $number_of_events events
+// $url = "http://brownlibrary.lwcal.com/live/rss/events/header/All%20Events/max/$number_of_events" ;
+// 
+// $ch = curl_init();
+// curl_setopt($ch, CURLOPT_URL, $url);
+// curl_setopt($ch, CURLOPT_TIMEOUT, 2); 
+// curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); 
+// $feed = curl_exec($ch);
+// curl_close($ch);
+// 
+// if ($feed !='') {
+// 
+//     date_default_timezone_set('America/New_York') ;
+// 
+// 	// load the text of the feed into a variable and turn it into a simpleXML object
+// 	$xml = simplexml_load_string($feed) ;
+// 
+// 	// iterate through the items in the object, pulling out relevant information
+// 	for($i = 0; $i < $number_of_events ; $i++){
+// 		$title = $xml->channel->item[$i]->title ;
+// 		$link = $xml->channel->item[$i]->link ;
+// 		$pubDate = $xml->channel->item[$i]->pubDate ;
+// 
+// 		// convert the pubDate string to a timestamp
+// 		$event_unix_timestamp = strtotime($pubDate) ;
+// 
+// 
+//         // the event will display for 15 minutes after the start of the event -- I may not need this depending on when LW expires events
+// 		$expire_date = $event_unix_timestamp + (60*15) ;
+// 
+// 		
+// 		$display_date = date( 'F j \a\t g:ia', $event_unix_timestamp) ;
+// 
+// 		if ($expire_date > time()) 
+// 		{
+// 			$upcoming_events .= "$display_date:&nbsp;<a href='$link'>$title</a>&nbsp;&nbsp;&bull;&nbsp;&nbsp;";
+// 		}   
+// 	}
+// 
+// 	// add a link to the full library calendar
+// 	$upcoming_events .= "<a href=\"http://brownlibrary.lwcal.com/#view/all\" id=\"see_all_events\">see&nbsp;all&nbsp;events&nbsp;&raquo;</a> <span style=\"font-size : .8em ; \">|</span> <a href=\"https://library.brown.edu/exhibits/\" id=\"see_all_exhibits\">see current exhibits&nbsp;&raquo;</a>" ;
+// }
+
+
+/* end calendar event retrieval /*
+
+
+/* begin librarian head-shot retrieval*/
+require ('/var/www/common/guest_homepage_connect.php');
+
+// Create connection
+$conn = mysqli_connect($servername, $username, $password, $dbname);
+// Check connection
+// if (!$conn) {
+//     die("Connection failed: " . mysqli_connect_error());
+// }
+// keep the die commented out except for error checking -- if the db dies, the home page dies
+
+$sql = "SELECT selector, portrait, staffid, firstname, lastname
+	FROM library.staff WHERE selector='Y' and portrait NOT LIKE '' and active='y' ORDER BY RAND() LIMIT 3";
+
+    $result = mysqli_query($conn, $sql);
+
+    while($row = mysqli_fetch_assoc($result)) {
+        $staffid = $row["staffid"] ;
+        $portrait = $row["portrait"] ;
+        $firstname = $row["firstname"] ;
+        $lastname = $row["lastname"] ;
+        
+        $selector_display_block .= "<a href='https://library.brown.edu/sr/profile.php?id=$staffid'><img src='/gateway/portraits/$portrait' alt=\"About $firstname $lastname\" /></a>";
+    }
+
+	//check to see if anyone is logged into chat		
+	$url_to_widget_status_json = "https://brown.libanswers.com/1.0/chat/widgets/status/11892" ;
+
+
+	$ch = curl_init() ;
+	curl_setopt($ch, CURLOPT_URL,$url_to_widget_status_json) ;
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE) ;
+	$widget_status_data = curl_exec($ch) ;
+	curl_close($ch) ;
+
+	$widget_status = json_decode($widget_status_data, TRUE) ;
+	
+	if($widget_status['online'] == "true"){
+		$ask_a_librarian_now = "<li><div id=\"libchat_0f5171a20cf6713444720d9b41688837\"></div><script type=\"text/javascript\" src=\"https://v2.libanswers.com/load_chat.php?hash=0f5171a20cf6713444720d9b41688837\"></script>&nbsp;&nbsp;<span class=\"icon-bubble\" id=\"chat_bubble_icon\" title=\"Live chat is online\"></span></li>" ;
+		$ask_us_sliding_tab = "<div id=\"libchat_fc2fb600a793ff01013fa46b100ca566\"></div><script type=\"text/javascript\" src=\"https://v2.libanswers.com/load_chat.php?hash=fc2fb600a793ff01013fa46b100ca566\"></script>" ;
+	}else{
+		$ask_a_librarian_now = "" ;
+		$ask_us_sliding_tab = "" ;
+	}
+?>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="google-site-verification" content="nxyHM-nvmKp2Iaz3o29A4AEIjWBpS0ZaO0CPLr89ioU" />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Brown University Library</title>
+	<link rel="stylesheet" type="text/css" href="/common/css/bootstrap/bootstrap.min.css" />
+	<link rel="stylesheet" type="text/css" href="/common/css/bootstrap/style.css" />
+	<link rel="icon" type="image/png" sizes="16x16" href="https://www.brown.edu/themes/custom/brown/static/favicon-16x16.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="https://www.brown.edu/themes/custom/brown/static/favicon-32x32.png">
+	<script>
+	  (function(d) {
+	    var config = {
+	      kitId: 'ojl0emw',
+	      scriptTimeout: 3000,
+	      async: true
+	    },
+	    h=d.documentElement,t=setTimeout(function(){h.className=h.className.replace(/\bwf-loading\b/g,"")+" wf-inactive";},config.scriptTimeout),tk=d.createElement("script"),f=false,s=d.getElementsByTagName("script")[0],a;h.className+=" wf-loading";tk.src='https://use.typekit.net/'+config.kitId+'.js';tk.async=true;tk.onload=tk.onreadystatechange=function(){a=this.readyState;if(f||a&&a!="complete"&&a!="loaded")return;f=true;clearTimeout(t);try{Typekit.load(config)}catch(e){}};s.parentNode.insertBefore(tk,s)
+	  })(document);
+	</script>
+
+	<style type="text/css">
+	
+		#emergency_bar a:hover {
+			border : 0px ; 
+		}
+		
+		#emergency_bar a {
+			text-decoration : underline ; 
+		}
+		
+		@media (max-width:775px) {
+		    #main_search_box {
+		        background-position: top 0;
+		    }   
+		}
+		
+		::-webkit-input-placeholder {
+		   color: #000 ;
+		}
+		
+		::-moz-placeholder {
+		   color: #000;  
+		}
+		
+		:-ms-input-placeholder {  
+		   color: #000;  
+		}
+		
+		@media print {
+		    a[href]:after { 
+		        content: none ; 
+		    }
+		        
+		    #main_search_box { 
+		        display : none ; 
+		    }
+		}
+		
+		#main_content, footer, #calendar_bar_container {
+		    margin-right : 0px !important ; /* fixes horizontal scroll */
+		}
+		
+		/* embed icomoon support -- files in common/css/ */
+		
+		@font-face {	font-family: 'icomoon';	src:url('/common/fonts/icomoon.eot');	src:url('/common/fonts/icomoon.eot#iefix') format('embedded-opentype'),		url('/common/fonts/icomoon.ttf') format('truetype'),		url('/common/fonts/icomoon.woff') format('woff'),		url('/common/fonts/icomoon.svg#icomoon') format('svg');/* 	font-weight: normal;	font-style: normal; */}
+		
+		[class^="icon-"], [class*=" icon-"] {	font-family: 'icomoon';	/* 	font-style: normal;	font-weight: normal;	font-variant: normal;	text-transform: none;	line-height: 1; */	/* Better Font Rendering =========== */	-webkit-font-smoothing: antialiased;	-moz-osx-font-smoothing: grayscale;}
+		
+		/* 
+		This is an abbreviated set of rules -- the full set can be found in the icomoon.css file in this directory
+		 */
+		
+		.icon-office:before {	content: "\e900";}
+		.icon-books:before {	content: "\e92d";}
+		.icon-library:before {	content: "\e92e";}
+		.icon-clock:before {	content: "\e95b";}
+		.icon-calendar:before {	content: "\e902";}
+		.icon-display:before {	content: "\e904";}
+		.icon-bubble:before {	content: "\e974";}
+		.icon-bubbles4:before {	content: "\e979";}
+		.icon-users:before {	content: "\e906";}
+		.icon-quotes-left:before {	content: "\e97f";}
+		.icon-search:before {	content: "\e907";}
+		.icon-accessibility:before {	content: "\e90a";}
+		.icon-info:before {	content: "\e90e";}
+		.icon-sort-alpha-asc:before {	content: "\ea48";}
+		
+		#get_help ul {
+			margin-left : .8em ; 
+		}
+		
+		
+		/* fix contrast error */
+		#main_search_box button {
+			background-color : #777 ; 
+			margin-left : -4px ; 
+		}
+		
+		#main_search_box #search_form {
+			background-color : transparent ; 
+		}
+		
+		
+		.blinking{
+		    animation:blinkingText 4s 3;
+		    display : inline-block ; 
+		    vertical-align : top ; 
+		    margin-top : -3px ; 
+		}
+		
+		@keyframes blinkingText{
+		    0%{     color: #fff ;    }
+		    49%{    color: transparent ; }
+		    50%{    color: transparent ; }
+		    99%{    color: transparent ;  }
+		    100%{   color: #fff ;    }
+		}
+		.lwcw h4 {
+			display : inline ; 
+			font-weight : normal ;
+			font-size : 1em ;
+		}
+		.lwcw a {
+			font-weight : bold ; 
+		}
+		div.lwcw, div.lwcw .lw_events_day {
+			display : inline ; 
+		}	
+		#calendar_bar {
+			padding-bottom : 15px ; 
+		}
+		
+		@media all and (min-width: 1690px) {
+  		#search_form {
+     	left: 50%;
+     	margin-left: none;
+  		}
+  		
+  		}
+		
+		@media all and (min-width: 1367px) and (max-width: 1690px) {
+  		#search_form {
+     	left: 50%;
+     	margin-left: none;
+  		}
+  		
+  		}
+				
+		@media all and (min-width: 1025px) and (max-width: 1366px) {
+  		#search_form {
+     	left: 50%;
+     	margin-left:none;
+  		}
+  		
+  		}
+  		
+  		@media all and (min-width: 768px) and (max-width: 1024px) {
+  		#search_form {
+     	left: 50%;
+     	margin-left:none;
+  		}
+  		
+  		}
+  		 				
+  		@media all and (min-width: 240px) and (max-width: 767px) {
+  		#search_form {
+     	left: 50%;
+     	margin-left:none;
+  		}
+  		
+		}	
+	
+		.lcs_slide_out a[role="button"] {
+			height : 25px ;
+			border : 1px solid #FFC72C !important ; 
+			box-shadow : 0px 1px 5px #666 !important ; 
+			font-size : .85em !important ; 
+			padding : 0px 10px 10px 10px ; 
+			text-decoration : none !important ; 
+		}
+		
+		.lcs_slide_out-l, .lcs_slide_out-r {
+			top : 300px !important ; 
+		}
+		
+		.libchat_online {
+		    background-color: transparent !important;
+		    border: 0px solid !important;
+		    display: inline !important;
+		    margin: 0px !important;
+		    padding: 0px !important;
+		    border-bottom: 1px dotted rgba(78, 54, 41, .2) !important;
+		    color: rgb(125,52,0) !important;
+		}
+		
+		#libchat_0f5171a20cf6713444720d9b41688837 {
+			display : inline ; 
+			border-bottom : 1px dotted rgba(78, 54, 41, .2) ;
+		}
+		
+		#libchat_0f5171a20cf6713444720d9b41688837 button {
+		    display: inline !important;
+		    padding: 0px !important;		    
+		    margin-bottom: 0 !important;		    
+		    text-align: left !important;		    
+		    white-space: nowrap !important;		    
+		    vertical-align: middle !important;		    
+		    cursor: pointer !important;		    
+		    background-image: none !important;		    
+		    border: 0px solid transparent !important;		    
+		    border-radius: 0px !important;		    
+		    background-color: transparent !important;		    
+		    color: rgb(125,52,0) !important;
+		}
+		
+		.speech-bubble {
+			position: relative;
+			background: #FFC72C;
+			border-radius: .4em;
+		}
+		
+		.speech-bubble:after {
+			content: '';
+			position: absolute;
+			bottom: 0;
+			left: 50%;
+			width: 0;
+			height: 0;
+			border: 9px solid transparent;
+			border-top-color: #FFC72C;
+			border-bottom: 0;
+			border-right: 0;
+			margin-left: -4.5px;
+			margin-bottom: -9px;
+		}	
+		
+		.container-fluid {
+			padding : 0px ;
+		}
+		
+		.row { 
+			margin : 0px ; 
+		}
+		
+	</style>
+
+	<script type="text/javascript">
+	setTimeout(function(){var a=document.createElement("script");
+	var b=document.getElementsByTagName("script")[0];
+	a.src=document.location.protocol+"//script.crazyegg.com/pages/scripts/0027/2813.js?"+Math.floor(new Date().getTime()/3600000);
+	a.async=true;a.type="text/javascript";b.parentNode.insertBefore(a,b)}, 1);
+	</script>
+	
+	
+	<style type="text/css">
+		/* fonts from Brown */
+		
+		   @font-face {
+		     font-family: CircularStd;
+		     src: url("https://library.brown.edu/common/fonts/CircularStd-Book.otf");
+		     font-weight: 400 ;
+		}
+		   @font-face {
+		     font-family: CircularStd;
+		     src: url("https://library.brown.edu/common/fonts/CircularStd-Medium.otf");
+		     font-weight: 600 ;
+		}
+		   @font-face {
+		     font-family: CircularStd;
+		     src: url("https://library.brown.edu/common/fonts/CircularStd-Bold.otf");
+		     font-weight: 800 ;
+		}
+	</style>
+
+	
+	
+</head>
+<body>
+<div class="screen_reader">
+	<h1>
+		Brown University Library
+	</h1>
+	<a href="#main_search_box">Skip to search box</a> <a href="#calendar_bar">Skip to events</a> <a href="#main_content">Skip to main content</a> 
+</div>
+
+<!-- this makes the little LibChat "Ask Us" tab at the right of the page show up -->
+<?php echo $ask_us_sliding_tab ; ?>
+
+<?php $universal_header = file_get_contents('https://library.brown.edu/includes/universal_header_include.html'); ?>
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-12" id="navbar_container">
+			<nav class="navbar navbar-default" role="navigation">
+				<div class="navbar-header">
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1"> <span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span> </button> 
+				</div>
+				<div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+<?php echo $universal_header ; ?>
+				</div>
+			</nav>
+		</div>
+	</div>
+	<div class="row" id="banner_bar">
+		<div class="col-md-3 logo">
+			<a href="http://www.brown.edu/"><img alt="Brown University Library -- link to Brown Home Page" src="https://library.brown.edu/common/images/wordmark_for_dark_background.png" /></a> 
+		</div>
+		<div class="col-md-9 banner_text">
+<!--
+			<div class="icon-clock icon">
+				<h2 style="position : relative ; top : -.15em ; ">
+					&nbsp;&nbsp;Today's Hours
+				</h2>
+			</div>
+			<br />
+<?php echo file_get_contents('https://library.brown.edu/includes/hours_homepage_2016.php') ; ?>
+			<a href="https://library.brown.edu/libweb/hours.php" id="hours_more">More hours and locations</a> 
+		</div>
+-->
+
+		<div style="margin-top : 10px ; font-size : 16pt  ; ">
+			<a href="https://brown.libanswers.com/" class="speech-bubble" style="float : right ; margin-top : 15px ; display : block ; border : 0px ; padding : 5px ;  background-color : #FFC72C ; color : rgb(125,52,0) ; border-radius : 5px ; font-size : 12pt">Chat now</a>
+			<h2 style="position : relative ; top : -.15em ; margin-bottom : 0px ; width : 12em ; ">
+				Live Chat for <br />Students and Faculty
+			<br />
+			<span style="font-size :.6em ; margin : 0px ; font-weight : normal ; ">8 a.m. to 10 p.m. EDT, M-F</span>
+			</h2>
+		</div>
+	</div>
+	<div class="row">
+
+				<!-- change "display : none" to "display : block" in the line below to make the EMERGENCY BAR display, do the reverse to hide it-->
+				<div class="col-md-12" id="emergency_bar" style="display : block ; font-size : 1.3em ; padding : 10px ; font-family : CircularStd ; font-weight : 400 ; ">
+			 
+					<span style="font-size : 1em ; " class="blinking">&bull;&nbsp;</span><span style="color : #fff ; ">The Library buildings are closed, with virtual service at <a href="mailto:rock@brown.edu">rock@brown.edu</a>. <a href="https://blogs.brown.edu/libnews/covid/">See updates on Library services</a>.</span></span> <!--  -->
+		
+				</div>
+		
+	</div>
+		<div class="row" id="main_search_box_and_description">
+	
+	<!-- Change URL below for new image -->
+	<!-- IMPORTANT: check image at phone resolution to see if the offset needs changing. The offset is in the style element in the header of this page -->
+	
+				<div class="col-md-9" id="main_search_box" style="background-image : url('https://library.brown.edu/redesign/images/banner/20200325cherry_blossoms.jpg') ; min-height  : 350px ; " title="cherry blossoms">
+		<!-- Change value of "top" value in the div below to look good over picture, but NO MORE THAN 80% -->
+					<div id="search_form" style="top : 80% ; left: 50%; max-width : 30% ; min-width: 20%; border : 0px solid gold ; min-width : 409px ; " tabindex="1">
+						<form method="get" action="https://search.library.brown.edu/" name="searchForm" id="searchForm" class="search">
+							<input name="utf8" type="hidden" value="&#x2713;" />
+							<div id="searchForm_lookfor_container">
+	
+								<input id="searchForm_lookfor" type="text" name="q" placeholder="Search the Library" onfocus="if (value =='Search the Library'){value =''}" onblur="if (value ==''){value='Search the Library'}" style="background-color : #efefef ; height : 51px ; border : 4px solid #FFC72C ; " aria-label="Search the Library" />
+								<button id="search_button"><span class="icon-search"></span><span class="screen_reader" style="color : #fff ; background-color : #000 ; ">Search</span></button> 
+							</div>
+						</form>
+					</div>
+				</div> 
+				<div class="col-md-3" id="main_search_description" style="padding : 2.5vh 20px 1vh 10px"> 
+				
+		<!-- Change caption below to match image -->
+					
+					<h2 style="font-weight : 600 ; text-align : center ; font-size : 1.15em; letter-spacing:.25px; margin-bottom: .8em;">Teaching, Learning, & Research Support Quick Links</h2>
+					
+					<ul style="list-style-type : none ; text-align : center ; padding-inline-start : 0px ; ">
+						<li><a href="https://library.brown.edu/about/specialists.php?sort=selector">Subject Specialists</a></li>
+						<li><a href="http://libguides.brown.edu/?b=s">Resource Guides</a></li>
+						<li><a href="https://rl3tp7zf5x.search.serialssolutions.com/">Journals</a> – <a href="http://libguides.brown.edu/az.php">Databases</a> – <a href="https://login.revproxy.brown.edu/login?url=http://search.ebscohost.com/login.aspx?direct=true&amp;site=eds-live&amp;authtype=ip&amp;custid=rock&amp;groupid=main&amp;profid=eds&amp;cli0=RV&amp;clv0=Y&amp;cli1=FT&amp;clv1=Y&amp;bquery=&amp;type=0">Articles</a></li>
+						<li><a href="http://libguides.brown.edu/teaching">Teaching Support Guide</a></li>
+						<li><a href="https://library.brown.edu/reserves/">Course Reserves</a></li>
+						<li><a href="http://libguides.brown.edu/diy">Research Support for Students</a></li>
+						<li><a href="http://libguides.brown.edu/health">Medical & Clinical Resources</a></li>
+						<li><a href="https://library.brown.edu/hay/">Special Collections & Archives</a></li>
+						<li>Questions: email <a href="mailto:rock@brown.edu">rock@brown.edu</a></li>
+					</ul>
+				</div>
+			</div>
+	</div>
+	<div class="row" id="calendar_bar_container">
+		<div class="col-md-12" id="calendar_bar">
+				<span class="icon-calendar" aria-hidden="true"> </span> <strong>Upcoming Events: </strong> 
+		<div class="lwcw" data-options="id=10&format=html"></div>
+		<script type="text/javascript" id="lw_lwcw" src="https://brownlibrary.lwcal.com/livewhale/theme/core/scripts/lwcw.js"></script>	
+<a href="http://brownlibrary.lwcal.com/#view/all" id="see_all_events">see&nbsp;all&nbsp;events&nbsp;&raquo;</a> <span style="font-size : .8em ; ">|</span> <a href="https://library.brown.edu/exhibits/" id="see_all_exhibits">see current exhibits&nbsp;&raquo;</a>	
+								
+		<?php echo $upcoming_events ; ?>
+		</div>
+	</div>
+	<div class="row" id="main_content">
+		<div class="col-md-3" id="get_help">
+			<div class="icon-bubbles4 icon">
+				<h2>
+					Get Help
+				</h2>
+			</div>
+			<div id="helppix">
+				<div class="screen_reader">Meet three of our librarians</div>
+<?php echo $selector_display_block ; ?>
+				<p id="meet_libs">
+					<a href="https://library.brown.edu/about/specialists.php?sort=selector">Contact a subject librarian</a>
+				</p>
+				<p id="have_a_question" style="padding: 2.5% 1%;">
+					Have a question about <strong>research</strong>, <strong>finding materials</strong>, or <strong>anything else</strong>?
+				</p>
+			</div>
+			<div>
+				<ul id="help_links">
+					<?php //echo $ask_a_librarian_now ; ?>
+					<li><a href="https://brown.libanswers.com/">Ask a Librarian Now <span class="icon-bubble" id="chat_bubble_icon" title="Live chat is online"></span></a></li>
+
+					<li><a href="https://brown.libanswers.com/">Search the FAQ</a></li>
+					<li><a href="https://library.brown.edu/info/borrowing/">Learn about Borrowing</a></li>
+					<li><a href="http://libguides.brown.edu/">Find a Subject Guide</a></li>
+					<li><a href="https://library.brown.edu/workshops/">Register for Workshops</a></li>
+					<li><a href="https://library.brown.edu/cds/">Consult on a Digital Scholarly Project</a></li>
+					<li><a href="https://library.brown.edu/reserves/">Request Course Reserves <span style="font-size : .7em ; ">(<span style="font-variant : small-caps ; ">ocra</span>)</span></a></li>
+					<li><a href="http://libguides.brown.edu/diy">Get Research Help</a> </li>
+				</ul>
+			</div>
+		</div>
+		<div class="col-md-9" id="non_help_container">
+			<div class="col-md-12" id="find_in_get">
+				<div class="col-md-5" id="find">
+					<div class="col-md-12 pad">
+						<div class="icon-search icon">
+							<h2>
+								Find Library Resources
+							</h2>
+						</div>
+						<div class="col-md-12 shell">
+							<div id="find_inner">
+								<div class="col-md-7">
+									<a href="https://search.library.brown.edu">Josiah&nbsp;<span style="font-size : .7em ; ">(Library catalog)</span></a><br />
+									<a href="http://josiah.brown.edu">Classic&nbsp;Josiah</a><br />
+									<a href="https://library.brown.edu/info/borrowing#other">Interlibrary Loan</a><br />
+									<a href="http://repository.library.brown.edu">Brown&nbsp;Digital Repository</a><br />
+								</div>
+								<div class="col-md-5">
+									<a href="https://rl3tp7zf5x.search.serialssolutions.com/">Journals</a><br />
+									<a href="https://login.revproxy.brown.edu/login?url=http://search.ebscohost.com/login.aspx?direct=true&site=eds-live&authtype=ip&custid=rock&groupid=main&profid=eds&cli0=RV&clv0=Y&cli1=FT&clv1=Y&bquery=&type=0">Articles</a><br />
+									<a href="http://libguides.brown.edu/az.php">Databases</a><br />
+									<a href="http://www.worldcat.org.revproxy.brown.edu/">WorldCat</a> <span style="font-size : .7em ;">(<a href="https://login.revproxy.brown.edu/login?url=http://newfirstsearch.oclc.org/dbname=WorldCat;done=https://library.brown.edu/;FSIP">Advanced</a>)</span><br />
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-4" id="in">
+					<div class="col-md-12 pad">
+						<div class="icon-office icon">
+							<h2>
+								In the Libraries
+							</h2>
+						</div>
+						<div class="col-md-12 shell">
+							<div id="in_inner">
+								<div class="col-md-6">
+									<a href="https://library.brown.edu/libweb/hours.php">Places &amp; Hours</a><br />
+									<a href="https://library.brown.edu/reserves/">Course Reserves</a><br />
+									<a href="https://library.brown.edu/info/computers_technology">Computers</a><br />
+									<a href="https://brownlibrary.lwcal.com/#view/all">Events</a><br />
+								</div>
+								<div class="col-md-6">
+									<a href="https://library.brown.edu/create/digitalstudio/">Digital Studio</a><br />
+									<a href="https://library.brown.edu/collatoz/">Collections</a><br />
+									<a href="https://library.brown.edu/about/stafflist.php">People</a><br />
+									<a href="https://library.brown.edu/info/coffee_snacks">Coffee &amp; Snacks</a><br />
+<!--<a href="" class="morelink">More&nbsp;&raquo;</a><br />-->
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-3" id="get">
+					<div class="col-md-12 pad">
+						<div class="icon-accessibility icon">
+							<h2>
+								Get access
+							</h2>
+						</div>
+						<div class="col-md-12 shell">
+							<div class="col-md-12" id="get_inner">
+								<a href="https://library.brown.edu/libweb/proxy.php">Off-Campus Access</a><br />
+								<a href="https://library.brown.edu/hay/specol.php">Special Collections</a><br />
+								<a href="https://library.brown.edu/libweb/visitors.php">Info for Guests</a><br />
+								<a href="https://library.brown.edu/borrowing/borrowdirect.php">BorrowDirect</a> 
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-12" id="cluster_news_pix">
+				<div class="col-md-5" id="cluster_pix">
+					<div class="col-md-12" id="cluster" style="background-color : transparent ; background-image : url('/redesign/covid/img/innovation_prize_gears.jpg') ; background-repeat : no-repeat ; background-size : cover ; padding : 0px ; ">
+<!-- 
+						<div id="cluster_info">
+							<a href="https://library.brown.edu/services/clusters/lib_mobile/" class="icon-info"><span class="screen_reader">Computer availability for all Library spaces</span></a> 
+						</div>
+ -->
+<!--
+						<div class="icon-display icon">
+							<h2>
+								&nbsp;Computer Availability
+							</h2>
+						</div>
+						<div id="cluster_availability">
+<?php include('/var/www/html/libweb/cluster_counts/key_server_counts.php'); ?>
+						</div>
+-->
+
+				<h2 style="width : 100% ; background-color : rgba(0, 0, 0, 0.6) ; padding : 10px 30px  ; font-size : 1.3em ; ">Library Innovation Prize</h2>
+					
+										<p style="color : rgb(125,52,0) ; margin-top : 60px ; margin-bottom : 0px ; background : rgba(255, 255, 255, 0.85) ; padding : 12px ; font-weight : bold ; ">We're awarding up to $750 for scholarship that demonstrates research innovation.  <a href="https://library.brown.edu/info/innovationprize/" aria-label="More information about the Library innovation prize" style="color : rgb(125,52,0) ; border-bottom : 1px dotted rgb(125,52,0) ; ">More&nbsp;»</a></p>
+
+
+
+					</div>
+					<div class="col-md-12" id="pix">
+						<div class="col-md-12" id="pix_inner">
+						
+						
+						<!-- CENTER BOX CONTENT eresources -->
+													
+							<h2 style="font-size : 1.3em ; text-align : center ; ">
+							   Free News: NYT and WSJ
+							</h2>
+							<div style="float : right ; width : 38% ; ">Brown students, faculty, and staff are eligible for free academic passes to <a href="https://library.brown.edu/eresources/nytimes.php">The New York Times</a> and <a href="https://library.brown.edu/eresources/wsjournal.php">The Wall Street Journal</a>. Activate yours now.</div>
+							<div><a href="https://library.brown.edu/eresources/nytimes.php"><img style="width : 55% ; display : block ; margin : 10px 0px 25px 0px ;" src="https://library.brown.edu/redesign/images/nyt_home_page.jpg" alt="The New York Times" /></a>
+							<a href="https://library.brown.edu/eresources/wsjournal.php"><img style="width : 55% ; " src="https://library.brown.edu/redesign/images/wsj_home_page.jpg" alt="The Wall Street Journal" /></a></div>													
+						</div>
+					</div>
+				</div>
+				<div class="col-md-7" id="news">
+					<div class="col-md-12" id="news_inner">
+						<div class="icon-quotes-left icon">
+							<div id="campaign_monitor_container" style="width : 95px ; float : right ; background-color : transparent ; height : 22px ; margin-right : 10px ; ">
+								<div class="createsend-button" style="height:22px;display:inline-block;" data-listid="t/B0/191/5AB/86CE9D8739906C0D"></div>
+								<script type="text/javascript">(function () { var e = document.createElement('script'); e.type = 'text/javascript'; e.async = true; e.src = ('https:' == document.location.protocol ? 'https' : 'http') + '://btn.createsend1.com/js/sb.min.js?v=3'; e.className = 'createsend-script'; var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(e, s); })();</script>
+							</div>
+							<h2>
+								<a href="https://blogs.brown.edu/libnews/" style="color : #333 ; ">News from the Libraries</a>
+							</h2>
+						</div>
+						<div id="news_content">
+<?php
+                                //adapted from http://bavotasan.com/2010/display-rss-feed-with-php/
+                                $rss = new DOMDocument();
+                                $rss->load('https://blogs.brown.edu/libnews/category/home-page/feed/');
+                                $feed = array();
+                                foreach ($rss->getElementsByTagName('item') as $node) {
+                                    $item = array ( 
+                                        'title' => $node->getElementsByTagName('title')->item(0)->nodeValue,
+                                        'desc' => $node->getElementsByTagName('description')->item(0)->nodeValue,
+                                        'link' => $node->getElementsByTagName('link')->item(0)->nodeValue,
+                                        );
+                                    array_push($feed, $item);
+                                }
+                                $limit = 2;
+                                for($x=0;$x<$limit;$x++) {
+                                    $title = str_replace(' & ', ' &amp; ', $feed[$x]['title']);
+                                    $link = $feed[$x]['link'];
+                                    $description = $feed[$x]['desc'];
+                                    $new_description = preg_replace('/Continue reading <span class=\"meta-nav\">\&\#8594\;<\/span>/', 'More <span class="screen_reader">about ' . $title . '</span> &raquo;<br /><br />', $description) ;
+//                                     $date = date('l F d, Y', strtotime($feed[$x]['date']));
+                                    echo '<p><strong><a href="'.$link.'#">'.$title.'</a></strong><br />';
+                                    echo '<p><!--img src="" style="float : right ; width : 70px ; height : 70px ; margin-left : 10px ; margin-bottom : 10px ; "/-->'.$new_description.'</p>';
+                                }
+                            ?>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+<?php include("/var/www/html/includes/universal_footer_include_bootstrap.html") ; ?>
+<script src="/common/js/bootstrap/jquery.min.js">
+</script>
+<script src="/common/js/bootstrap/bootstrap.min.js">
+</script>
+<script src="/common/js/bootstrap/scripts.js">
+</script>
+<!-- Google analytics -->
+<script type="text/javascript">
+	var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+	document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+	try {
+	var pageTracker = _gat._getTracker("UA-3203647-3");
+	pageTracker._trackPageview();
+	} catch(err) {}
+</script>
+</body>
+</html>
